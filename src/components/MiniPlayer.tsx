@@ -1,7 +1,8 @@
 import React from 'react';
-import { Play, Pause, SkipForward, Heart, Volume2, VolumeX, Gauge } from 'lucide-react';
+import { Play, Pause, SkipForward, Heart, Volume2, VolumeX } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { useLibrary } from '../context/LibraryContext';
+import { THEME_ACCENTS } from '../utils/theme';
 
 interface MiniPlayerProps {
   onExpand: () => void;
@@ -15,90 +16,99 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand }) => {
     duration,
     volume,
     speed,
+    accentColor,
     togglePlay,
     nextTrack,
     setVolume,
   } = usePlayer();
 
   const { isFavorite, toggleFavorite } = useLibrary();
+  const theme = THEME_ACCENTS[accentColor];
 
   if (!currentTrack) return null;
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
   const isFav = isFavorite(currentTrack.id);
+  const isYouTube = currentTrack.source === 'youtube' || Boolean(currentTrack.youtubeId);
 
   return (
-    <div className="fixed bottom-16 md:bottom-4 left-2 right-2 md:left-6 md:right-6 z-40">
-      <div className="max-w-7xl mx-auto relative rounded-2xl border border-[#2A2A2A] bg-[#161616]/95 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] overflow-hidden transition-all duration-300 hover:border-white/20">
-        {/* Top Slim Progress Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-[#242424]">
+    <div className="fixed bottom-20 md:bottom-6 left-3 right-3 md:left-8 md:right-8 z-40 max-w-2xl mx-auto">
+      <div className="relative rounded-2xl border border-white/[0.12] bg-zinc-950/85 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] overflow-hidden transition-all duration-300 hover:border-white/20">
+        {/* Dynamic Top Progress Bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-white/[0.08]">
           <div
-            className="h-full bg-gradient-to-r from-[#FF8284] to-[#ff5256] transition-all duration-150"
+            className={`h-full bg-gradient-to-r ${theme.gradient} transition-all duration-150`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
 
-        <div className="flex items-center justify-between p-3 md:px-5 md:py-3.5 gap-3">
-          {/* Track Info (Click to Expand) */}
+        <div className="flex items-center justify-between p-2.5 sm:px-4 sm:py-3 gap-3">
+          {/* Track Info (Tap to Expand Sheet) */}
           <div
             onClick={onExpand}
-            className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0 select-none group"
+            className="flex items-center gap-3 cursor-pointer flex-1 min-w-0 select-none group"
           >
-            <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 group-hover:scale-105 transition-transform">
+            <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 shadow-md group-hover:scale-105 transition-transform">
               <img
                 src={currentTrack.coverUrl}
                 alt={currentTrack.title}
                 className="w-full h-full object-cover"
               />
               {isPlaying && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                  <div className="flex items-end gap-0.5 h-4">
-                    <span className="w-1 bg-[#FF8284] animate-pulse h-full rounded-full" />
-                    <span className="w-1 bg-[#FF8284] animate-pulse h-2 rounded-full" />
-                    <span className="w-1 bg-[#FF8284] animate-pulse h-3 rounded-full" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="flex items-end gap-0.5 h-3.5">
+                    <span className={`w-0.5 ${theme.bg} eq-bar-1 rounded-full`} />
+                    <span className={`w-0.5 ${theme.bg} eq-bar-2 rounded-full`} />
+                    <span className={`w-0.5 ${theme.bg} eq-bar-3 rounded-full`} />
+                    <span className={`w-0.5 ${theme.bg} eq-bar-4 rounded-full`} />
                   </div>
                 </div>
               )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <h4 className="text-sm font-semibold text-white truncate group-hover:text-[#FF8284] transition-colors">
-                {currentTrack.title}
-              </h4>
-              <p className="text-xs text-[#8A8A8A] truncate">
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs sm:text-sm font-bold text-white truncate group-hover:text-zinc-200 transition-colors">
+                  {currentTrack.title}
+                </h4>
+                {isYouTube && (
+                  <span className="flex-shrink-0 text-[9px] font-black px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/30">
+                    YT
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] sm:text-xs text-zinc-400 truncate mt-0.5">
                 {currentTrack.artist}
               </p>
             </div>
           </div>
 
-          {/* Quick Speed Indicator Badge */}
+          {/* Quick Speed Badge */}
           {speed !== 1.0 && (
             <div
               onClick={onExpand}
-              className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FF8284]/15 border border-[#FF8284]/30 text-[#FF8284] text-xs font-semibold cursor-pointer"
-              title="Velocidade ativa"
+              className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full ${theme.bg}/15 border ${theme.border} ${theme.text} text-[10px] font-bold cursor-pointer`}
             >
-              <Gauge className="w-3 h-3" />
               <span>{speed}x</span>
             </div>
           )}
 
-          {/* Favorite Button */}
+          {/* Favorite Toggle */}
           <button
             onClick={() => toggleFavorite(currentTrack)}
-            className={`p-2 rounded-xl hover:bg-white/5 transition-colors ${
-              isFav ? 'text-[#FF8284]' : 'text-[#8A8A8A] hover:text-white'
+            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
+              isFav ? theme.text : 'text-zinc-400 hover:text-white'
             }`}
             title={isFav ? 'Remover dos favoritos' : 'Favoritar'}
           >
-            <Heart className={`w-5 h-5 ${isFav ? 'fill-current' : ''}`} />
+            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFav ? 'fill-current' : ''}`} />
           </button>
 
-          {/* Volume Slider (Desktop) */}
-          <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-[#2A2A2A]">
+          {/* Desktop Volume */}
+          <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-white/10">
             <button
               onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
-              className="text-[#8A8A8A] hover:text-white p-1"
+              className="text-zinc-400 hover:text-white p-1"
             >
               {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -109,26 +119,30 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({ onExpand }) => {
               step="0.01"
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-20 accent-[#FF8284] h-1 bg-[#333] rounded-lg cursor-pointer"
+              className="w-16 accent-white h-1 bg-zinc-700 rounded-lg cursor-pointer"
             />
           </div>
 
           {/* Play / Next Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={togglePlay}
-              className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-md"
+              className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg`}
               title={isPlaying ? 'Pausar' : 'Reproduzir'}
             >
-              {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+              {isPlaying ? (
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+              ) : (
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current ml-0.5" />
+              )}
             </button>
 
             <button
               onClick={nextTrack}
-              className="p-2.5 rounded-xl text-[#8A8A8A] hover:text-white hover:bg-white/5 transition-colors"
-              title="Próxima faixa"
+              className="p-2 sm:p-2.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+              title="Próxima"
             >
-              <SkipForward className="w-5 h-5" />
+              <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

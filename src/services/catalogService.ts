@@ -1,6 +1,8 @@
 import { Track, LyricLine, Playlist } from '../types';
+import { YTMUSIC_FEATURED_TRACKS } from './youtubeMusicService';
 
 export const FEATURED_TRACKS: Track[] = [
+  ...YTMUSIC_FEATURED_TRACKS,
   {
     id: 'kane-track-1',
     title: 'Neon Horizon (Slowed & Reverb)',
@@ -42,7 +44,7 @@ export const FEATURED_TRACKS: Track[] = [
     audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=electronic-future-beats-117997.mp3',
     coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=600&q=80',
     source: 'stream',
-    lyrics: `[00:00.00]Speeding on the highway lane
+    lyrics: `[00:00.00]Speeding on the highway road
 [00:10.00]Clear skies after the rain
 [00:20.00]Keep the rhythm on repeat
 [00:30.00]Nothing can stop our feet`,

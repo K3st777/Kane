@@ -1,4 +1,7 @@
-import { Home, Search, Library, Settings, Music, Upload, Smartphone } from 'lucide-react';
+import React from 'react';
+import { Home, Compass, Library, SlidersHorizontal, Upload } from 'lucide-react';
+import { usePlayer } from '../context/PlayerContext';
+import { THEME_ACCENTS } from '../utils/theme';
 
 export type TabType = 'home' | 'search' | 'library';
 
@@ -15,37 +18,49 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSelectTab,
   onOpenSettings,
   onOpenImport,
-  onOpenApkModal,
 }) => {
+  const { accentColor } = usePlayer();
+  const theme = THEME_ACCENTS[accentColor];
+
   return (
     <>
-      {/* Top Header for Desktop & Tablet */}
-      <header className="sticky top-0 z-30 w-full border-b border-[#242424] bg-[#0D0D0D]/90 backdrop-blur-md px-4 py-3 md:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo */}
+      {/* Top App Bar Header */}
+      <header className="sticky top-0 z-30 w-full px-4 pt-3 pb-3 md:px-8 bg-black/40 backdrop-blur-2xl border-b border-white/[0.06] transition-all">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          {/* Logo & App Title */}
           <div
             onClick={() => onSelectTab('home')}
             className="flex items-center gap-3 cursor-pointer select-none group"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF8284] to-[#ff5256] flex items-center justify-center shadow-[0_0_15px_rgba(255,130,132,0.4)] group-hover:scale-105 transition-transform">
-              <Music className="w-5 h-5 text-black" />
+            <div
+              className={`w-9 h-9 rounded-2xl bg-gradient-to-tr ${theme.gradient} flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-95`}
+              style={{ boxShadow: `0 0 20px ${theme.glow}` }}
+            >
+              <div className="w-3.5 h-3.5 bg-black rounded-full flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+              </div>
             </div>
             <div>
-              <span className="font-bold text-xl tracking-wider text-white">KANE</span>
-              <span className="hidden sm:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FF8284]/15 text-[#FF8284] border border-[#FF8284]/30">
-                LIVRE & OPEN SOURCE
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-base md:text-lg tracking-wider text-white">
+                  KANE
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                  YT MUSIC
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 rounded-2xl border border-[#242424] bg-[#161616]/60 p-1 backdrop-blur-sm">
+          {/* Desktop Tab Selector */}
+          <nav className="hidden md:flex items-center gap-1.5 rounded-full bg-zinc-900/60 p-1.5 border border-white/10 backdrop-blur-xl">
             <button
               onClick={() => onSelectTab('home')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all ${
                 currentTab === 'home'
-                  ? 'bg-[#FF8284] text-black shadow-[0_0_15px_rgba(255,130,132,0.4)]'
-                  : 'text-[#8A8A8A] hover:text-white hover:bg-white/5'
+                  ? `bg-gradient-to-r ${theme.gradient} text-black font-bold shadow-md`
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
               <Home className="w-4 h-4" />
@@ -53,21 +68,21 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
             <button
               onClick={() => onSelectTab('search')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all ${
                 currentTab === 'search'
-                  ? 'bg-[#FF8284] text-black shadow-[0_0_15px_rgba(255,130,132,0.4)]'
-                  : 'text-[#8A8A8A] hover:text-white hover:bg-white/5'
+                  ? `bg-gradient-to-r ${theme.gradient} text-black font-bold shadow-md`
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Search className="w-4 h-4" />
-              Buscar
+              <Compass className="w-4 h-4" />
+              Explorar YT Music
             </button>
             <button
               onClick={() => onSelectTab('library')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all ${
                 currentTab === 'library'
-                  ? 'bg-[#FF8284] text-black shadow-[0_0_15px_rgba(255,130,132,0.4)]'
-                  : 'text-[#8A8A8A] hover:text-white hover:bg-white/5'
+                  ? `bg-gradient-to-r ${theme.gradient} text-black font-bold shadow-md`
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
               <Library className="w-4 h-4" />
@@ -75,65 +90,70 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           </nav>
 
-          {/* Action Buttons */}
+          {/* Action Icons */}
           <div className="flex items-center gap-2">
-            {onOpenApkModal && (
-              <button
-                onClick={onOpenApkModal}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF8284] to-[#ff5c60] text-black text-xs md:text-sm font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_12px_rgba(255,130,132,0.3)]"
-                title="Baixar APK para Android"
-              >
-                <Smartphone className="w-4 h-4 stroke-[2.5]" />
-                <span className="hidden sm:inline">Baixar APK</span>
-              </button>
-            )}
             <button
               onClick={onOpenImport}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#2A2A2A] bg-[#161616] text-xs md:text-sm font-medium text-white hover:border-[#FF8284] hover:bg-[#FF8284]/10 transition-all shadow-sm"
-              title="Importar Músicas e Playlists"
+              className="p-2.5 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 active:scale-95 transition-all shadow-sm"
+              title="Importar Áudio / Playlists"
             >
-              <Upload className="w-4 h-4 text-[#FF8284]" />
-              <span className="hidden sm:inline">Importar</span>
+              <Upload className="w-4 h-4" />
             </button>
             <button
               onClick={onOpenSettings}
-              className="p-2.5 rounded-xl border border-[#2A2A2A] bg-[#161616] text-[#8A8A8A] hover:text-white hover:border-white/20 transition-all"
-              title="Configurações"
+              className="p-2.5 rounded-2xl bg-zinc-900/60 border border-white/10 text-zinc-300 hover:text-white hover:border-white/20 hover:bg-zinc-800/80 active:scale-95 transition-all shadow-sm"
+              title="Personalização & Ajustes"
             >
-              <Settings className="w-4 h-4" />
+              <SlidersHorizontal className="w-4 h-4" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0D0D0D]/95 border-t border-[#242424] px-4 py-2 flex items-center justify-around backdrop-blur-lg">
+      {/* Floating Frosted Glass Bottom Navigation Bar (Mobile Native App Look) */}
+      <nav className="md:hidden fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto rounded-full bg-zinc-950/80 border border-white/[0.12] backdrop-blur-3xl px-3 py-2 flex items-center justify-around shadow-[0_15px_35px_rgba(0,0,0,0.8)]">
         <button
           onClick={() => onSelectTab('home')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 text-xs font-medium transition-colors ${
-            currentTab === 'home' ? 'text-[#FF8284]' : 'text-[#8A8A8A]'
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-full transition-all ${
+            currentTab === 'home'
+              ? `${theme.text} scale-105 font-bold`
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Home className="w-5 h-5" />
-          <span>Início</span>
+          <Home className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px] tracking-tight">Início</span>
         </button>
+
         <button
           onClick={() => onSelectTab('search')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 text-xs font-medium transition-colors ${
-            currentTab === 'search' ? 'text-[#FF8284]' : 'text-[#8A8A8A]'
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-full transition-all ${
+            currentTab === 'search'
+              ? `${theme.text} scale-105 font-bold`
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Search className="w-5 h-5" />
-          <span>Buscar</span>
+          <Compass className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px] tracking-tight">Explorar</span>
         </button>
+
         <button
           onClick={() => onSelectTab('library')}
-          className={`flex flex-col items-center gap-1 py-1 px-3 text-xs font-medium transition-colors ${
-            currentTab === 'library' ? 'text-[#FF8284]' : 'text-[#8A8A8A]'
+          className={`flex flex-col items-center gap-1 py-1 px-4 rounded-full transition-all ${
+            currentTab === 'library'
+              ? `${theme.text} scale-105 font-bold`
+              : 'text-zinc-400 hover:text-zinc-200'
           }`}
         >
-          <Library className="w-5 h-5" />
-          <span>Biblioteca</span>
+          <Library className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px] tracking-tight">Biblioteca</span>
+        </button>
+
+        <button
+          onClick={onOpenSettings}
+          className="flex flex-col items-center gap-1 py-1 px-4 rounded-full text-zinc-400 hover:text-zinc-200 transition-all active:scale-95"
+        >
+          <SlidersHorizontal className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[10px] tracking-tight">Ajustes</span>
         </button>
       </nav>
     </>

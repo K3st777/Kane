@@ -1,65 +1,95 @@
-import React, { useState } from 'react';
-import { Search, X, Play, Plus, Heart, Music2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, X, Play, Plus, Heart, Music2, ExternalLink, Loader2 } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { useLibrary } from '../context/LibraryContext';
-import { CatalogService } from '../services/catalogService';
+import { YouTubeMusicService, YTMUSIC_FEATURED_TRACKS } from '../services/youtubeMusicService';
+import { Track } from '../types';
+import { THEME_ACCENTS } from '../utils/theme';
 
 export const SearchView: React.FC = () => {
   const [query, setQuery] = useState('');
-  const { playTrack, addToQueue, currentTrack } = usePlayer();
-  const { favorites, isFavorite, toggleFavorite, playlists } = useLibrary();
+  const [results, setResults] = useState<Track[]>(YTMUSIC_FEATURED_TRACKS);
+  const [isLoading, setIsLoading] = useState(false);
+  const { playTrack, addToQueue, currentTrack, accentColor } = usePlayer();
+  const { isFavorite, toggleFavorite } = useLibrary();
+  const theme = THEME_ACCENTS[accentColor];
 
-  // Combine all local playlist tracks + favorites
-  const localTracks = [
-    ...favorites,
-    ...playlists.flatMap((p) => p.tracks),
+  // Search debouncing
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults(YTMUSIC_FEATURED_TRACKS);
+      return;
+    }
+
+    setIsLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const found = await YouTubeMusicService.search(query);
+        setResults(found);
+      } catch {
+        // fallback
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const QUICK_TAGS = [
+    'The Weeknd',
+    'Billie Eilish',
+    'Matuê',
+    'Lady Gaga',
+    'Travis Scott',
+    'Lo-Fi Beats',
   ];
-
-  const results = CatalogService.search(query, localTracks);
-
-  const GENRE_TAGS = ['Lofi', 'Synthwave', 'Chill', 'Electronic', 'Cyberpunk', 'Ambient'];
 
   return (
     <div className="space-y-6 pb-36 animate-in fade-in duration-300">
       {/* Search Header */}
       <div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
-          Buscar Faixas e Artistas
+        <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight mb-1">
+          Explorar YouTube Music
         </h2>
-        <p className="text-sm text-[#8A8A8A]">
-          Pesquise no catálogo aberto e em suas faixas locais importadas
+        <p className="text-xs sm:text-sm text-zinc-400">
+          Pesquise por milhões de músicas, artistas, álbuns ou cole um link do YouTube
         </p>
       </div>
 
-      {/* Search Input */}
+      {/* Search Input (Native Mobile Pill) */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#8A8A8A]">
-          <Search className="w-5 h-5" />
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400">
+          {isLoading ? (
+            <Loader2 className={`w-5 h-5 animate-spin ${theme.text}`} />
+          ) : (
+            <Search className="w-5 h-5" />
+          )}
         </div>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="O que você quer ouvir? (Título, artista ou álbum)"
-          className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-[#161616] border border-[#2A2A2A] text-white placeholder-[#666] text-sm sm:text-base focus:outline-none focus:border-[#FF8284] focus:ring-1 focus:ring-[#FF8284] transition-all"
+          placeholder="Buscar no YouTube Music ou colar URL / Video ID..."
+          className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-zinc-950/70 border border-white/10 text-white placeholder-zinc-500 text-xs sm:text-sm backdrop-blur-xl focus:outline-none focus:border-white/30 transition-all shadow-inner"
         />
         {query && (
           <button
             onClick={() => setQuery('')}
-            className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#8A8A8A] hover:text-white"
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-zinc-400 hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      {/* Genre Filter Tags */}
+      {/* Quick Suggestion Tags */}
       <div className="flex flex-wrap gap-2">
-        {GENRE_TAGS.map((tag) => (
+        {QUICK_TAGS.map((tag) => (
           <button
             key={tag}
             onClick={() => setQuery(tag)}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#161616] border border-[#262626] text-[#8A8A8A] hover:text-white hover:border-[#FF8284] transition-colors"
+            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-zinc-900/60 border border-white/[0.08] text-zinc-300 hover:text-white hover:border-white/20 active:scale-95 transition-all shadow-sm"
           >
             {tag}
           </button>
@@ -67,95 +97,104 @@ export const SearchView: React.FC = () => {
       </div>
 
       {/* Results List */}
-      {query.trim() ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-[#8A8A8A] font-semibold uppercase tracking-wider">
-            <span>Resultados ({results.length})</span>
-          </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-[11px] text-zinc-400 font-bold uppercase tracking-wider">
+          <span>{query.trim() ? `Resultados (${results.length})` : 'Destaques Sugeridos'}</span>
+        </div>
 
-          {results.length > 0 ? (
-            <div className="space-y-2">
-              {results.map((track) => {
-                const isCurrent = currentTrack?.id === track.id;
-                const isFav = isFavorite(track.id);
-                return (
+        {results.length > 0 ? (
+          <div className="space-y-2">
+            {results.map((track) => {
+              const isCurrent = currentTrack?.id === track.id;
+              const isFav = isFavorite(track.id);
+              const isYt = track.source === 'youtube' || Boolean(track.youtubeId);
+
+              return (
+                <div
+                  key={track.id}
+                  className={`flex items-center justify-between p-2.5 sm:p-3 rounded-2xl border transition-all ${
+                    isCurrent
+                      ? `${theme.border} bg-white/[0.08] shadow-md`
+                      : 'bg-zinc-950/60 border-white/[0.06] hover:border-white/20 hover:bg-zinc-900/60'
+                  }`}
+                >
                   <div
-                    key={track.id}
-                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all ${
-                      isCurrent
-                        ? 'bg-[#FF8284]/15 border-[#FF8284]/40'
-                        : 'bg-[#141414] border-[#222] hover:border-white/20'
-                    }`}
+                    onClick={() => playTrack(track, results)}
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group select-none"
                   >
-                    <div
-                      onClick={() => playTrack(track, results)}
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group select-none"
-                    >
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-white/10">
-                        <img
-                          src={track.coverUrl}
-                          alt={track.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Play className="w-4 h-4 text-white fill-current" />
-                        </div>
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 border border-white/10 group-hover:scale-105 transition-transform">
+                      <img
+                        src={track.coverUrl}
+                        alt={track.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Play className="w-4 h-4 text-white fill-current" />
                       </div>
+                    </div>
 
-                      <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
                         <h4
-                          className={`text-sm font-semibold truncate ${
-                            isCurrent ? 'text-[#FF8284]' : 'text-white group-hover:text-[#FF8284]'
+                          className={`text-xs sm:text-sm font-bold truncate ${
+                            isCurrent ? theme.text : 'text-white'
                           }`}
                         >
                           {track.title}
                         </h4>
-                        <p className="text-xs text-[#8A8A8A] truncate">{track.artist}</p>
+                        {isYt && (
+                          <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-red-600/30 text-red-400 border border-red-500/30">
+                            YT
+                          </span>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pl-3">
-                      <button
-                        onClick={() => toggleFavorite(track)}
-                        className={`p-2 rounded-xl hover:bg-white/5 transition-colors ${
-                          isFav ? 'text-[#FF8284]' : 'text-[#8A8A8A] hover:text-white'
-                        }`}
-                        title={isFav ? 'Remover dos favoritos' : 'Favoritar'}
-                      >
-                        <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
-                      </button>
-
-                      <button
-                        onClick={() => addToQueue(track)}
-                        className="p-2 rounded-xl text-[#8A8A8A] hover:text-white hover:bg-white/5 transition-colors"
-                        title="Adicionar à fila"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
+                      <p className="text-[11px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-[#8A8A8A]">
-              <Music2 className="w-12 h-12 stroke-1 text-[#444] mx-auto mb-3" />
-              <p className="text-base font-semibold text-white">Nenhum resultado encontrado</p>
-              <p className="text-xs text-[#666] mt-1">
-                Tente buscar com outros termos ou importe novas faixas locais.
-              </p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-16 text-[#8A8A8A]">
-          <Search className="w-12 h-12 stroke-1 text-[#444] mx-auto mb-3" />
-          <p className="text-base font-semibold text-white">Descubra novas faixas</p>
-          <p className="text-xs text-[#666] mt-1 max-w-sm mx-auto">
-            Digite o nome de uma música, artista ou selecione uma das categorias acima para começar.
-          </p>
-        </div>
-      )}
+
+                  <div className="flex items-center gap-1 pl-2">
+                    {isYt && (
+                      <button
+                        onClick={() => YouTubeMusicService.openInOfficialApp(track)}
+                        className="p-2 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-white/5 transition-colors"
+                        title="Abrir no YouTube Music Oficial"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => toggleFavorite(track)}
+                      className={`p-2 rounded-xl hover:bg-white/5 transition-colors ${
+                        isFav ? theme.text : 'text-zinc-400 hover:text-white'
+                      }`}
+                      title={isFav ? 'Remover dos favoritos' : 'Favoritar'}
+                    >
+                      <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <button
+                      onClick={() => addToQueue(track)}
+                      className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                      title="Adicionar à fila"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-zinc-400">
+            <Music2 className="w-10 h-10 stroke-1 text-zinc-600 mx-auto mb-2" />
+            <p className="text-sm font-bold text-white">Nenhum resultado encontrado</p>
+            <p className="text-xs text-zinc-500 mt-1">
+              Tente buscar por outro artista ou cole um link direto do YouTube Music.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

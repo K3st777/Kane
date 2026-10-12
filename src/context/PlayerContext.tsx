@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Track, RepeatMode, EqualizerPreset } from '../types';
+import { Track, RepeatMode, EqualizerPreset, AccentColor, BlurIntensity } from '../types';
 import { globalAudioEngine } from '../engine/audioEngine';
+import { YouTubeEngine } from '../engine/youtubeEngine';
 import { StorageService, DEFAULT_PRESETS } from '../services/storage';
 
 interface PlayerContextType {
@@ -19,6 +20,16 @@ interface PlayerContextType {
   activePreset: string;
   customBands: [number, number, number, number, number];
   errorMessage: string | null;
+
+  // Personalização de UI
+  accentColor: AccentColor;
+  blurIntensity: BlurIntensity;
+  ambientGlow: boolean;
+  enableVisualizer: boolean;
+  setAccentColor: (accent: AccentColor) => void;
+  setBlurIntensity: (blur: BlurIntensity) => void;
+  setAmbientGlow: (enabled: boolean) => void;
+  setEnableVisualizer: (enabled: boolean) => void;
 
   playTrack: (track: Track, newQueue?: Track[]) => void;
   togglePlay: () => void;
@@ -56,6 +67,12 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [queueIndex, setQueueIndex] = useState<number>(-1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // UI Customization
+  const [accentColor, setAccentColorState] = useState<AccentColor>(initialSettings.accentColor || 'emerald');
+  const [blurIntensity, setBlurIntensityState] = useState<BlurIntensity>(initialSettings.blurIntensity || 'high');
+  const [ambientGlow, setAmbientGlowState] = useState<boolean>(initialSettings.ambientGlow ?? true);
+  const [enableVisualizer, setEnableVisualizerState] = useState<boolean>(initialSettings.enableVisualizer ?? true);
+
   const [activePreset, setActivePreset] = useState<string>(StorageService.getActivePreset());
   const [customBands, setCustomBands] = useState<[number, number, number, number, number]>(
     StorageService.getCustomEqBands()
@@ -63,15 +80,40 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const presets = DEFAULT_PRESETS;
 
-  // Setup audio engine callbacks
+  // Personalization setters
+  const setAccentColor = (accent: AccentColor) => {
+    setAccentColorState(accent);
+    StorageService.saveSettings({ ...StorageService.getSettings(), accentColor: accent });
+  };
+
+  const setBlurIntensity = (blur: BlurIntensity) => {
+    setBlurIntensityState(blur);
+    StorageService.saveSettings({ ...StorageService.getSettings(), blurIntensity: blur });
+  };
+
+  const setAmbientGlow = (enabled: boolean) => {
+    setAmbientGlowState(enabled);
+    StorageService.saveSettings({ ...StorageService.getSettings(), ambientGlow: enabled });
+  };
+
+  const setEnableVisualizer = (enabled: boolean) => {
+    setEnableVisualizerState(enabled);
+    StorageService.saveSettings({ ...StorageService.getSettings(), enableVisualizer: enabled });
+  };
+
+  // Setup HTML5 Audio engine callbacks
   useEffect(() => {
     globalAudioEngine.onTimeUpdate((time, dur) => {
-      setProgress(time);
-      if (dur > 0) setDuration(dur);
+      if (!currentTrack || (currentTrack.source !== 'youtube' && !currentTrack.youtubeId)) {
+        setProgress(time);
+        if (dur > 0) setDuration(dur);
+      }
     });
 
     globalAudioEngine.onStateChange((playing) => {
-      setIsPlaying(playing);
+      if (!currentTrack || (currentTrack.source !== 'youtube' && !currentTrack.youtubeId)) {
+        setIsPlaying(playing);
+      }
     });
 
     globalAudioEngine.onError((err) => {
@@ -80,7 +122,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     // Apply saved EQ
-    const savedPreset = presets.find(p => p.id === activePreset);
+    const savedPreset = presets.find((p) => p.id === activePreset);
     if (savedPreset) {
       globalAudioEngine.setAllEqualizerBands(savedPreset.gains);
     } else {
@@ -89,14 +131,23 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
     globalAudioEngine.setVolume(volume);
     globalAudioEngine.setSpeed(speed, preservePitch);
+
+    // Initialize YouTube Engine
+    YouTubeEngine.getInstance().setVolume(volume);
+    YouTubeEngine.getInstance().setPlaybackRate(speed);
   }, []);
 
   const nextTrack = useCallback(() => {
     if (queue.length === 0) return;
 
-    if (repeatMode === 'ONE') {
-      globalAudioEngine.seek(0);
-      globalAudioEngine.play();
+    if (repeatMode === 'ONE' && currentTrack) {
+      if (currentTrack.source === 'youtube' || currentTrack.youtubeId) {
+        YouTubeEngine.getInstance().seek(0);
+        YouTubeEngine.getInstance().play();
+      } else {
+        globalAudioEngine.seek(0);
+        globalAudioEngine.play();
+      }
       return;
     }
 
@@ -115,15 +166,27 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCurrentTrack(nextTrk);
     setProgress(0);
     StorageService.addToHistory(nextTrk);
-    globalAudioEngine.load(nextTrk.audioUrl, true);
-  }, [queue, queueIndex, repeatMode]);
+
+    if (nextTrk.source === 'youtube' || nextTrk.youtubeId) {
+      globalAudioEngine.pause();
+      const yt = YouTubeEngine.getInstance();
+      yt.loadTrack(nextTrk.youtubeId || '');
+      yt.play();
+    } else {
+      YouTubeEngine.getInstance().pause();
+      globalAudioEngine.load(nextTrk.audioUrl, true);
+    }
+  }, [queue, queueIndex, repeatMode, currentTrack]);
 
   const prevTrack = useCallback(() => {
     if (queue.length === 0) return;
 
-    // If more than 3 seconds in, restart track
     if (progress > 3) {
-      globalAudioEngine.seek(0);
+      if (currentTrack && (currentTrack.source === 'youtube' || currentTrack.youtubeId)) {
+        YouTubeEngine.getInstance().seek(0);
+      } else {
+        globalAudioEngine.seek(0);
+      }
       return;
     }
 
@@ -137,44 +200,87 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCurrentTrack(prevTrk);
     setProgress(0);
     StorageService.addToHistory(prevTrk);
-    globalAudioEngine.load(prevTrk.audioUrl, true);
-  }, [queue, queueIndex, progress, repeatMode]);
 
-  // Hook onEnded
+    if (prevTrk.source === 'youtube' || prevTrk.youtubeId) {
+      globalAudioEngine.pause();
+      const yt = YouTubeEngine.getInstance();
+      yt.loadTrack(prevTrk.youtubeId || '');
+      yt.play();
+    } else {
+      YouTubeEngine.getInstance().pause();
+      globalAudioEngine.load(prevTrk.audioUrl, true);
+    }
+  }, [queue, queueIndex, progress, repeatMode, currentTrack]);
+
+  // Hook onEnded for both engines
   useEffect(() => {
     globalAudioEngine.onEnded(() => {
       nextTrack();
     });
-  }, [nextTrack]);
 
-  const playTrack = useCallback((track: Track, newQueue?: Track[]) => {
-    let targetQueue = newQueue ? [...newQueue] : queue;
-    if (newQueue) {
-      if (isShuffle) {
-        // Keep current track first, shuffle rest
-        const otherTracks = targetQueue.filter(t => t.id !== track.id);
-        for (let i = otherTracks.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
-        }
-        targetQueue = [track, ...otherTracks];
+    const yt = YouTubeEngine.getInstance();
+    yt.setOnEnded(() => {
+      nextTrack();
+    });
+
+    yt.setOnTimeUpdate((time, dur) => {
+      if (currentTrack && (currentTrack.source === 'youtube' || currentTrack.youtubeId)) {
+        setProgress(time);
+        if (dur > 0) setDuration(dur);
       }
-      setQueue(targetQueue);
-    } else if (!queue.some(t => t.id === track.id)) {
-      targetQueue = [...queue, track];
-      setQueue(targetQueue);
-    }
+    });
 
-    const idx = targetQueue.findIndex(t => t.id === track.id);
-    setQueueIndex(idx !== -1 ? idx : 0);
-    setCurrentTrack(track);
-    setProgress(0);
-    setDuration(track.duration || 0);
-    setErrorMessage(null);
+    yt.setOnStateChange((playing) => {
+      if (currentTrack && (currentTrack.source === 'youtube' || currentTrack.youtubeId)) {
+        setIsPlaying(playing);
+      }
+    });
 
-    StorageService.addToHistory(track);
-    globalAudioEngine.load(track.audioUrl, true);
-  }, [queue, isShuffle]);
+    yt.setOnError((err) => {
+      setErrorMessage(err);
+      setIsPlaying(false);
+    });
+  }, [nextTrack, currentTrack]);
+
+  const playTrack = useCallback(
+    (track: Track, newQueue?: Track[]) => {
+      let targetQueue = newQueue ? [...newQueue] : queue;
+      if (newQueue) {
+        if (isShuffle) {
+          const otherTracks = targetQueue.filter((t) => t.id !== track.id);
+          for (let i = otherTracks.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
+          }
+          targetQueue = [track, ...otherTracks];
+        }
+        setQueue(targetQueue);
+      } else if (!queue.some((t) => t.id === track.id)) {
+        targetQueue = [...queue, track];
+        setQueue(targetQueue);
+      }
+
+      const idx = targetQueue.findIndex((t) => t.id === track.id);
+      setQueueIndex(idx !== -1 ? idx : 0);
+      setCurrentTrack(track);
+      setProgress(0);
+      setDuration(track.duration || 0);
+      setErrorMessage(null);
+
+      StorageService.addToHistory(track);
+
+      if (track.source === 'youtube' || track.youtubeId) {
+        globalAudioEngine.pause();
+        const yt = YouTubeEngine.getInstance();
+        yt.loadTrack(track.youtubeId || '');
+        yt.play();
+      } else {
+        YouTubeEngine.getInstance().pause();
+        globalAudioEngine.load(track.audioUrl, true);
+      }
+    },
+    [queue, isShuffle]
+  );
 
   const togglePlay = useCallback(() => {
     if (!currentTrack) {
@@ -183,31 +289,55 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
       return;
     }
-    if (isPlaying) {
-      globalAudioEngine.pause();
+
+    const isYt = currentTrack.source === 'youtube' || Boolean(currentTrack.youtubeId);
+    if (isYt) {
+      const yt = YouTubeEngine.getInstance();
+      if (isPlaying) {
+        yt.pause();
+      } else {
+        yt.play();
+      }
     } else {
-      globalAudioEngine.play();
+      if (isPlaying) {
+        globalAudioEngine.pause();
+      } else {
+        globalAudioEngine.play();
+      }
     }
   }, [currentTrack, isPlaying, queue, playTrack]);
 
-  const seek = useCallback((seconds: number) => {
-    globalAudioEngine.seek(seconds);
-    setProgress(seconds);
-  }, []);
+  const seek = useCallback(
+    (seconds: number) => {
+      const isYt = currentTrack && (currentTrack.source === 'youtube' || Boolean(currentTrack.youtubeId));
+      if (isYt) {
+        YouTubeEngine.getInstance().seek(seconds);
+      } else {
+        globalAudioEngine.seek(seconds);
+      }
+      setProgress(seconds);
+    },
+    [currentTrack]
+  );
 
   const setVolume = useCallback((vol: number) => {
     const clamped = Math.max(0, Math.min(1, vol));
     setVolumeState(clamped);
     globalAudioEngine.setVolume(clamped);
+    YouTubeEngine.getInstance().setVolume(clamped);
     StorageService.saveSettings({ ...StorageService.getSettings(), volume: clamped });
   }, []);
 
-  const setSpeed = useCallback((s: number) => {
-    const clamped = Math.max(0.5, Math.min(2.0, s));
-    setSpeedState(clamped);
-    globalAudioEngine.setSpeed(clamped, preservePitch);
-    StorageService.saveSettings({ ...StorageService.getSettings(), speed: clamped });
-  }, [preservePitch]);
+  const setSpeed = useCallback(
+    (s: number) => {
+      const clamped = Math.max(0.5, Math.min(2.0, s));
+      setSpeedState(clamped);
+      globalAudioEngine.setSpeed(clamped, preservePitch);
+      YouTubeEngine.getInstance().setPlaybackRate(clamped);
+      StorageService.saveSettings({ ...StorageService.getSettings(), speed: clamped });
+    },
+    [preservePitch]
+  );
 
   const togglePreservePitch = useCallback(() => {
     const newVal = !preservePitch;
@@ -217,7 +347,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [preservePitch, speed]);
 
   const toggleRepeat = useCallback(() => {
-    setRepeatMode(prev => {
+    setRepeatMode((prev) => {
       if (prev === 'OFF') return 'ALL';
       if (prev === 'ALL') return 'ONE';
       return 'OFF';
@@ -225,10 +355,10 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, []);
 
   const toggleShuffle = useCallback(() => {
-    setIsShuffle(prev => {
+    setIsShuffle((prev) => {
       const nextShuffle = !prev;
       if (nextShuffle && queue.length > 1 && currentTrack) {
-        const remaining = queue.filter(t => t.id !== currentTrack.id);
+        const remaining = queue.filter((t) => t.id !== currentTrack.id);
         for (let i = remaining.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
@@ -241,51 +371,61 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   }, [queue, currentTrack]);
 
   const addToQueue = useCallback((track: Track) => {
-    setQueue(prev => [...prev, track]);
+    setQueue((prev) => [...prev, track]);
   }, []);
 
-  const removeFromQueue = useCallback((index: number) => {
-    setQueue(prev => {
-      const updated = prev.filter((_, i) => i !== index);
-      if (index === queueIndex) {
-        // If current track removed, play next if available
-        if (updated.length > 0) {
-          const nextIdx = Math.min(index, updated.length - 1);
-          setQueueIndex(nextIdx);
-          setCurrentTrack(updated[nextIdx]);
-          globalAudioEngine.load(updated[nextIdx].audioUrl, isPlaying);
-        } else {
-          setCurrentTrack(null);
-          globalAudioEngine.pause();
+  const removeFromQueue = useCallback(
+    (index: number) => {
+      setQueue((prev) => {
+        const updated = prev.filter((_, i) => i !== index);
+        if (index === queueIndex) {
+          if (updated.length > 0) {
+            const nextIdx = Math.min(index, updated.length - 1);
+            setQueueIndex(nextIdx);
+            setCurrentTrack(updated[nextIdx]);
+            if (updated[nextIdx].source === 'youtube' || updated[nextIdx].youtubeId) {
+              YouTubeEngine.getInstance().loadTrack(updated[nextIdx].youtubeId || '');
+              if (isPlaying) YouTubeEngine.getInstance().play();
+            } else {
+              globalAudioEngine.load(updated[nextIdx].audioUrl, isPlaying);
+            }
+          } else {
+            setCurrentTrack(null);
+            globalAudioEngine.pause();
+            YouTubeEngine.getInstance().pause();
+          }
+        } else if (index < queueIndex) {
+          setQueueIndex((prevIdx) => prevIdx - 1);
         }
-      } else if (index < queueIndex) {
-        setQueueIndex(prevIdx => prevIdx - 1);
-      }
-      return updated;
-    });
-  }, [queueIndex, isPlaying]);
+        return updated;
+      });
+    },
+    [queueIndex, isPlaying]
+  );
 
-  const reorderQueue = useCallback((fromIndex: number, toIndex: number) => {
-    setQueue(prev => {
-      if (fromIndex < 0 || fromIndex >= prev.length || toIndex < 0 || toIndex >= prev.length) {
-        return prev;
-      }
-      const updated = [...prev];
-      const [moved] = updated.splice(fromIndex, 1);
-      updated.splice(toIndex, 0, moved);
+  const reorderQueue = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      setQueue((prev) => {
+        if (fromIndex < 0 || fromIndex >= prev.length || toIndex < 0 || toIndex >= prev.length) {
+          return prev;
+        }
+        const updated = [...prev];
+        const [moved] = updated.splice(fromIndex, 1);
+        updated.splice(toIndex, 0, moved);
 
-      // Adjust queueIndex if needed
-      if (queueIndex === fromIndex) {
-        setQueueIndex(toIndex);
-      } else if (queueIndex > fromIndex && queueIndex <= toIndex) {
-        setQueueIndex(queueIndex - 1);
-      } else if (queueIndex < fromIndex && queueIndex >= toIndex) {
-        setQueueIndex(queueIndex + 1);
-      }
+        if (queueIndex === fromIndex) {
+          setQueueIndex(toIndex);
+        } else if (queueIndex > fromIndex && queueIndex <= toIndex) {
+          setQueueIndex(queueIndex - 1);
+        } else if (queueIndex < fromIndex && queueIndex >= toIndex) {
+          setQueueIndex(queueIndex + 1);
+        }
 
-      return updated;
-    });
-  }, [queueIndex]);
+        return updated;
+      });
+    },
+    [queueIndex]
+  );
 
   const clearQueue = useCallback(() => {
     setQueue(currentTrack ? [currentTrack] : []);
@@ -294,7 +434,7 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const setEqualizerBand = useCallback((bandIndex: number, gainDb: number) => {
     globalAudioEngine.setEqualizerBand(bandIndex, gainDb);
-    setCustomBands(prev => {
+    setCustomBands((prev) => {
       const next = [...prev] as [number, number, number, number, number];
       next[bandIndex] = gainDb;
       StorageService.saveCustomEqBands(next);
@@ -304,15 +444,18 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     StorageService.saveActivePreset('custom');
   }, []);
 
-  const applyEqualizerPreset = useCallback((presetId: string) => {
-    const preset = presets.find(p => p.id === presetId);
-    if (preset) {
-      setActivePreset(preset.id);
-      StorageService.saveActivePreset(preset.id);
-      setCustomBands(preset.gains);
-      globalAudioEngine.setAllEqualizerBands(preset.gains);
-    }
-  }, [presets]);
+  const applyEqualizerPreset = useCallback(
+    (presetId: string) => {
+      const preset = presets.find((p) => p.id === presetId);
+      if (preset) {
+        setActivePreset(preset.id);
+        StorageService.saveActivePreset(preset.id);
+        setCustomBands(preset.gains);
+        globalAudioEngine.setAllEqualizerBands(preset.gains);
+      }
+    },
+    [presets]
+  );
 
   const clearError = useCallback(() => {
     setErrorMessage(null);
@@ -336,6 +479,14 @@ export const PlayerProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         activePreset,
         customBands,
         errorMessage,
+        accentColor,
+        blurIntensity,
+        ambientGlow,
+        enableVisualizer,
+        setAccentColor,
+        setBlurIntensity,
+        setAmbientGlow,
+        setEnableVisualizer,
         playTrack,
         togglePlay,
         seek,

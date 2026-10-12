@@ -15,6 +15,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { ImportModal } from './components/ImportModal';
 import { ApkDownloadModal } from './components/ApkDownloadModal';
 import { Playlist } from './types';
+import { THEME_ACCENTS } from './utils/theme';
 import { AlertCircle, X } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
@@ -30,7 +31,8 @@ const MainLayout: React.FC = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isApkModalOpen, setIsApkModalOpen] = useState(false);
 
-  const { errorMessage, clearError } = usePlayer();
+  const { errorMessage, clearError, accentColor, ambientGlow } = usePlayer();
+  const theme = THEME_ACCENTS[accentColor];
 
   const handleSelectTab = (tab: TabType) => {
     setCurrentTab(tab);
@@ -38,7 +40,15 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white flex flex-col font-sans selection:bg-[#FF8284] selection:text-black">
+    <div className="min-h-screen bg-[#050608] text-white flex flex-col font-sans relative overflow-x-hidden selection:bg-white selection:text-black">
+      {/* Dynamic Background Ambient Light */}
+      {ambientGlow && (
+        <div
+          className="fixed -top-40 -left-40 w-96 h-96 rounded-full blur-[130px] pointer-events-none opacity-20 z-0 transition-all duration-700"
+          style={{ backgroundColor: theme.primaryHex }}
+        />
+      )}
+
       {/* Top Header Navigation */}
       <Navigation
         currentTab={currentTab}
@@ -62,7 +72,7 @@ const MainLayout: React.FC = () => {
       )}
 
       {/* Main Container Views */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 md:px-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-4 md:px-8 relative z-10">
         {selectedPlaylist ? (
           <PlaylistDetailView
             playlist={selectedPlaylist}
@@ -70,7 +80,7 @@ const MainLayout: React.FC = () => {
           />
         ) : currentTab === 'home' ? (
           <HomeView
-            onOpenPlaylist={setSelectedPlaylist as any}
+            onOpenPlaylist={setSelectedPlaylist as (playlist: Playlist) => void}
             onOpenImport={() => setIsImportOpen(true)}
             onOpenApkModal={() => setIsApkModalOpen(true)}
           />

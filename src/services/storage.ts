@@ -25,6 +25,11 @@ export const DEFAULT_SETTINGS: PlayerSettings = {
   normalizeAudio: false,
   audioQuality: 'high',
   theme: 'dark',
+  accentColor: 'emerald',
+  blurIntensity: 'high',
+  ambientGlow: true,
+  enableVisualizer: true,
+  autoPlayNext: true,
 };
 
 export class StorageService {

@@ -1,14 +1,14 @@
-import React from 'react';
-import { Play, Sparkles, Flame, Clock, Radio, Music } from 'lucide-react';
+import { Play, Sparkles, Flame, Clock, Radio, Music, Smartphone } from 'lucide-react';
 import { usePlayer } from '../context/PlayerContext';
 import { CatalogService } from '../services/catalogService';
 
 interface HomeViewProps {
   onOpenPlaylist: (playlistId: string) => void;
   onOpenImport: () => void;
+  onOpenApkModal?: () => void;
 }
 
-export const HomeView: React.FC<HomeViewProps> = ({ onOpenImport }) => {
+export const HomeView: React.FC<HomeViewProps> = ({ onOpenImport, onOpenApkModal }) => {
   const { playTrack, currentTrack } = usePlayer();
   const tracks = CatalogService.getFeaturedTracks();
 
@@ -55,6 +55,16 @@ export const HomeView: React.FC<HomeViewProps> = ({ onOpenImport }) => {
             >
               Importar Músicas
             </button>
+
+            {onOpenApkModal && (
+              <button
+                onClick={onOpenApkModal}
+                className="flex items-center gap-2 px-5 py-3.5 rounded-2xl border border-[#FF8284]/40 bg-[#FF8284]/15 text-[#FF8284] text-sm font-bold hover:bg-[#FF8284]/25 hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,130,132,0.2)]"
+              >
+                <Smartphone className="w-4 h-4 stroke-[2.5]" />
+                Baixar APK Android
+              </button>
+            )}
           </div>
         </div>
       </div>

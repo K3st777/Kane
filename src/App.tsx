@@ -13,6 +13,7 @@ import { LyricsModal } from './components/LyricsModal';
 import { QueueModal } from './components/QueueModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ImportModal } from './components/ImportModal';
+import { ApkDownloadModal } from './components/ApkDownloadModal';
 import { Playlist } from './types';
 import { AlertCircle, X } from 'lucide-react';
 
@@ -27,6 +28,7 @@ const MainLayout: React.FC = () => {
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isApkModalOpen, setIsApkModalOpen] = useState(false);
 
   const { errorMessage, clearError } = usePlayer();
 
@@ -43,6 +45,7 @@ const MainLayout: React.FC = () => {
         onSelectTab={handleSelectTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenImport={() => setIsImportOpen(true)}
+        onOpenApkModal={() => setIsApkModalOpen(true)}
       />
 
       {/* Error Toast Notification if any */}
@@ -69,6 +72,7 @@ const MainLayout: React.FC = () => {
           <HomeView
             onOpenPlaylist={setSelectedPlaylist as any}
             onOpenImport={() => setIsImportOpen(true)}
+            onOpenApkModal={() => setIsApkModalOpen(true)}
           />
         ) : currentTab === 'search' ? (
           <SearchView />
@@ -116,6 +120,11 @@ const MainLayout: React.FC = () => {
       <ImportModal
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
+      />
+
+      <ApkDownloadModal
+        isOpen={isApkModalOpen}
+        onClose={() => setIsApkModalOpen(false)}
       />
     </div>
   );

@@ -1,5 +1,4 @@
-import React from 'react';
-import { Home, Search, Library, Settings, Music, Upload } from 'lucide-react';
+import { Home, Search, Library, Settings, Music, Upload, Smartphone } from 'lucide-react';
 
 export type TabType = 'home' | 'search' | 'library';
 
@@ -8,6 +7,7 @@ interface NavigationProps {
   onSelectTab: (tab: TabType) => void;
   onOpenSettings: () => void;
   onOpenImport: () => void;
+  onOpenApkModal?: () => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -15,6 +15,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSelectTab,
   onOpenSettings,
   onOpenImport,
+  onOpenApkModal,
 }) => {
   return (
     <>
@@ -76,6 +77,16 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {onOpenApkModal && (
+              <button
+                onClick={onOpenApkModal}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF8284] to-[#ff5c60] text-black text-xs md:text-sm font-bold hover:scale-105 active:scale-95 transition-all shadow-[0_0_12px_rgba(255,130,132,0.3)]"
+                title="Baixar APK para Android"
+              >
+                <Smartphone className="w-4 h-4 stroke-[2.5]" />
+                <span className="hidden sm:inline">Baixar APK</span>
+              </button>
+            )}
             <button
               onClick={onOpenImport}
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#2A2A2A] bg-[#161616] text-xs md:text-sm font-medium text-white hover:border-[#FF8284] hover:bg-[#FF8284]/10 transition-all shadow-sm"

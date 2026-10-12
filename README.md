@@ -79,11 +79,31 @@ http://localhost:5173
 npm run test
 ```
 
-### Compilar para Produção
+### Compilar para Produção (Web)
 ```bash
 npm run build
 ```
 Os arquivos otimizados estarão disponíveis na pasta `dist/` prontos para deploy estático em qualquer servidor (Vercel, Netlify, GitHub Pages, Cloudflare Pages).
+
+### 📱 Como Baixar ou Compilar o APK para Android
+
+#### Opção 1: Download Automático via GitHub Actions
+O repositório possui uma pipeline automatizada em [`.github/workflows/build-apk.yml`](.github/workflows/build-apk.yml) que compila o aplicativo e disponibiliza o arquivo `kane-release.apk` na aba **Releases** e em **Actions > Artifacts**.
+
+#### Opção 2: Compilar o APK Localmente via Gradle
+1. Sincronize os arquivos web com o projeto nativo Android:
+```bash
+npx cap sync android
+```
+2. Compile o APK com o wrapper do Gradle:
+```bash
+cd android
+./gradlew assembleDebug
+# No Windows PowerShell:
+.\gradlew.bat assembleDebug
+```
+O arquivo APK gerado estará em:
+`android/app/build/outputs/apk/debug/app-debug.apk`
 
 ---
 
